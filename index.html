@@ -147,13 +147,17 @@ async function search(reset){
     let res;
     if(type==='mine'){return renderMine()}
     if(q){
-      const d=await tmdb(`/search/${type}`,{query:q,page});
+      // 영화·드라마 구분 없이 검색하고, 한국 넷플릭스에 있는 것만 남긴다
+      const d=await tmdb('/search/multi',{query:q,page});
       total=d.total_pages;
-      // 검색 결과 중 한국 넷플릭스에 있는 것만 확인
-      const checks=await Promise.all(d.results.map(async r=>{
-        try{const w=await tmdb(`/${type}/${r.id}/watch/providers`);
-          const k=w.results?.[REGION];return (k?.flatrate||[]).some(x=>x.provider_id===NETFLIX)?r:null}catch{return null}}));
-      res=checks.filter(Boolean);
+      const cand=d.results.filter(r=>r.media_type==='movie'||r.media_type==='tv');
+      const checks=await Promise.all(cand.map(async r=>{
+        r._t=r.media_type;
+        try{const w=await tmdb(`/${r._t}/${r.id}/watch/providers`);
+          r._nf=((w.results?.[REGION]?.flatrate)||[]).some(x=>x.provider_id===NETFLIX)}catch{r._nf=false}
+        return r}));
+      res=checks.filter(r=>r._nf);
+      if(res.length<3&&page===1)res=res.concat(checks.filter(r=>!r._nf).slice(0,8).map(r=>({...r,_unk:true})))
     }else{
       const d=await tmdb(`/discover/${type}`,params());
       total=d.total_pages;res=d.results;
@@ -165,19 +169,20 @@ async function search(reset){
 }
 
 function cardHtml(r,t){
+  t=r._t||t;
   const title=r.title||r.name, date=(r.release_date||r.first_air_date||'').slice(0,4);
   const k=t+':'+r.id, m=mine[k];
   return `<div class="card" data-id="${r.id}" data-t="${t}">
-    ${r.vote_average?`<span class="badge">⭐ ${r.vote_average.toFixed(1)}</span>`:''}
+    ${r._unk?'<span class="badge" style="top:auto;bottom:46px;background:#a60">넷플릭스 확인 안 됨</span>':''}${r.vote_average?`<span class="badge">⭐ ${r.vote_average.toFixed(1)}</span>`:''}
     ${m?`<span class="mark">${m.s==='seen'?'✅':'⭐'}</span>`:''}
     <img loading="lazy" src="${r.poster_path?IMG+'w342'+r.poster_path:''}" alt="">
     <div class="t">${title}<div class="m">${date}</div></div></div>`;
 }
 function render(){
   let list=items;
-  if($('#hide').value==='1')list=list.filter(r=>mine[type+':'+r.id]?.s!=='seen');
+  if($('#hide').value==='1')list=list.filter(r=>mine[(r._t||type)+':'+r.id]?.s!=='seen');
   if(!list.length){$('#main').innerHTML='<div class="msg">조건에 맞는 작품이 없어요.</div>';return}
-  $('#main').innerHTML=`<div class="grid">${list.map(r=>cardHtml(r,type)).join('')}</div>`+
+  $('#main').innerHTML=(list.some(r=>r._unk)?'<div class="msg" style="padding:6px">'확인 안 됨' 표시는 TMDB 정보에 한국 넷플릭스가 없는 작품이에요. 정보가 늦게 갱신되는 경우가 있어서 함께 보여드려요.</div>':'')+`<div class="grid">${list.map(r=>cardHtml(r,type)).join('')}</div>`+
     (page<total?'<button class="more" id="more">더 보기</button>':'<div class="msg">끝</div>');
   bindCards();
   $('#more')?.addEventListener('click',()=>{page++;search(false)});
