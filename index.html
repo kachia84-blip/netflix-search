@@ -86,6 +86,7 @@ const $=s=>document.querySelector(s);
 const API='https://api.themoviedb.org/3', IMG='https://image.tmdb.org/t/p/';
 const NETFLIX=8, REGION='KR';
 const store={get(k,d){try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}}};
+let wkey=store.get('wkey','');
 let key=store.get('key',''), type='movie', page=1, total=1, sel=new Set(), items=[], genreCache={};
 let mine=store.get('mine',{}); // "movie:123": {s:'want'|'seen', t,p,y,r}
 
@@ -105,10 +106,12 @@ function showSetup(){
   <ol><li><a href="https://www.themoviedb.org/signup" target="_blank">TMDB 무료 가입</a></li>
   <li><a href="https://www.themoviedb.org/settings/api" target="_blank">설정 → API</a>에서 개인용(Personal) 신청 후 <b>API 키</b>(또는 API 읽기 액세스 토큰)를 복사</li>
   <li>아래에 붙여넣기 (이 기기 브라우저에만 저장됩니다)</li></ol>
-  <input id="keyIn" placeholder="API 키 붙여넣기" value="${key}">
+  <input id="keyIn" placeholder="TMDB API 키 붙여넣기" value="${key}">
+  <p style="margin:12px 0 0">(선택) <a href="https://api.watchmode.com" target="_blank">Watchmode</a> 무료 키를 넣으면 넷플릭스 앱의 작품 화면으로 바로 열려요.</p>
+  <input id="wkeyIn" placeholder="Watchmode API 키 (선택)" value="${wkey}">
   <button id="keySave" class="on">저장하고 시작</button>
   <p style="color:var(--sub);font-size:12px">출처: TMDB / JustWatch 제공 시청 가능 정보</p></div>`;
-  $('#keySave').onclick=()=>{key=$('#keyIn').value.trim();if(!key)return;store.set('key',key);init()};
+  $('#keySave').onclick=()=>{key=$('#keyIn').value.trim();wkey=$('#wkeyIn').value.trim();if(!key)return;store.set('key',key);store.set('wkey',wkey);init()};
 }
 
 async function loadGenres(){
@@ -203,6 +206,25 @@ function nfLink(title){
   if(/iPhone|iPad|iPod/i.test(ua))return `nflx://www.netflix.com/search?q=${q}`;
   return `https://www.netflix.com/search?q=${q}`;
 }
+function nfAppLink(url){
+  const ua=navigator.userAgent;
+  if(/Android/i.test(ua))return `intent://${url.replace(/^https?:\/\//,'')}#Intent;scheme=https;package=com.netflix.mediaclient;S.browser_fallback_url=${encodeURIComponent(url)};end`;
+  if(/iPhone|iPad|iPod/i.test(ua))return url.replace(/^https?:/,'nflx:');
+  return url;
+}
+async function nfTitleUrl(t,id){
+  if(!wkey)return null;
+  const cache=store.get('nfmap',{}), k=t+':'+id;
+  if(k in cache)return cache[k];
+  try{
+    const w=p=>fetch('https://api.watchmode.com/v1/'+p+(p.includes('?')?'&':'?')+'apiKey='+wkey).then(r=>{if(!r.ok)throw 0;return r.json()});
+    const sr=await w(`search/?search_field=tmdb_${t}_id&search_value=${id}`);
+    const wid=sr.title_results?.[0]?.id;
+    let url='';
+    if(wid){const src=await w(`title/${wid}/sources/?regions=KR`);url=(src.find(x=>x.name==='Netflix'&&/^https?:/.test(x.web_url||''))||{}).web_url||''}
+    cache[k]=url;store.set('nfmap',cache);return url;
+  }catch{return null}
+}
 async function openDetail(t,id){
   $('#sheet').innerHTML='<div class="msg">불러오는 중…</div>';$('#modal').classList.add('show');
   try{
@@ -226,6 +248,10 @@ async function openDetail(t,id){
       store.set('mine',mine);openDetail(t,id);type==='mine'?renderMine():render()};
     $('#nfOpen').onclick=()=>{copyText(title).then(ok=>toast(ok?'제목 복사됨. 넷플릭스 검색창에 붙여넣으세요':'복사 실패. 위 제목을 길게 눌러 복사하세요'))};
     $('#nfCopy').onclick=()=>copyText(title).then(ok=>toast(ok?'제목 복사됨':'복사 실패. 위 제목을 길게 눌러 복사하세요'));
+    nfTitleUrl(t,id).then(u=>{
+      if(!u||!$('#nfOpen'))return;
+      $('#nfOpen').href=nfAppLink(u);$('#nfOpen').textContent='넷플릭스 앱에서 바로 열기';$('#nfOpen').onclick=null;
+    });
     $('#bWant').onclick=()=>set('want');$('#bSeen').onclick=()=>set('seen');$('#bClose').onclick=close;
   }catch(e){$('#sheet').innerHTML=`<div class="msg">${e.message}</div>`}
 }
