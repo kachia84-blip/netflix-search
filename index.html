@@ -182,7 +182,7 @@ function render(){
   let list=items;
   if($('#hide').value==='1')list=list.filter(r=>mine[(r._t||type)+':'+r.id]?.s!=='seen');
   if(!list.length){$('#main').innerHTML='<div class="msg">조건에 맞는 작품이 없어요.</div>';return}
-  $('#main').innerHTML=(list.some(r=>r._unk)?'<div class="msg" style="padding:6px">'확인 안 됨' 표시는 TMDB 정보에 한국 넷플릭스가 없는 작품이에요. 정보가 늦게 갱신되는 경우가 있어서 함께 보여드려요.</div>':'')+`<div class="grid">${list.map(r=>cardHtml(r,type)).join('')}</div>`+
+  $('#main').innerHTML=(list.some(r=>r._unk)?'<div class="msg" style="padding:6px">“확인 안 됨” 표시는 TMDB 정보에 한국 넷플릭스가 없는 작품이에요. 정보가 늦게 갱신되는 경우가 있어서 함께 보여드려요.</div>':'')+`<div class="grid">${list.map(r=>cardHtml(r,type)).join('')}</div>`+
     (page<total?'<button class="more" id="more">더 보기</button>':'<div class="msg">끝</div>');
   bindCards();
   $('#more')?.addEventListener('click',()=>{page++;search(false)});
