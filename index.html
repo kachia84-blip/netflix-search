@@ -208,18 +208,25 @@ async function openDetail(t,id){
       t==='movie'?(d.runtime?d.runtime+'분':''):(d.number_of_seasons?'시즌 '+d.number_of_seasons+'개':''),
       (d.genres||[]).map(g=>g.name).join(' · ')].filter(Boolean).join(' · ');
     $('#sheet').innerHTML=`${d.backdrop_path?`<img class="bd" src="${IMG}w780${d.backdrop_path}">`:''}
-    <div class="b"><h2>${title}</h2><div style="color:var(--sub);font-size:13px">${sub}${d.vote_average?` · ⭐ ${d.vote_average.toFixed(1)}`:''}</div>
+    <div class="b"><h2 id="ttl" style="user-select:all">${title}</h2><div style="color:var(--sub);font-size:13px">${sub}${d.vote_average?` · ⭐ ${d.vote_average.toFixed(1)}`:''}</div>
     <p>${d.overview||'줄거리 정보가 없어요.'}</p>
     <div>${onNf?'✅ 한국 넷플릭스 시청 가능':'⚠️ 현재 한국 넷플릭스 목록에 없음'}</div>
     <div style="margin-top:8px"><a class="btn" id="nfOpen" target="_blank" rel="noopener" href="${nfLink(title)}">넷플릭스 앱 열기 (제목 복사)</a>
+    <a class="btn" style="background:#444" target="_blank" rel="noopener" href="https://www.netflix.com/search?q=${encodeURIComponent(title)}">웹에서 검색</a>
+    <button class="btn2" id="nfCopy">제목 복사</button>
     <button class="btn2" id="bWant">${m?.s==='want'?'⭐ 보고싶어요 ✔':'⭐ 보고싶어요'}</button>
     <button class="btn2" id="bSeen">${m?.s==='seen'?'✅ 봤어요 ✔':'✅ 봤어요'}</button>
     <button class="btn2" id="bClose">닫기</button></div></div>`;
     const set=s=>{if(mine[k]?.s===s)delete mine[k];else mine[k]={s,t:title,p:d.poster_path,y:d.release_date||d.first_air_date||'',r:d.vote_average};
       store.set('mine',mine);openDetail(t,id);type==='mine'?renderMine():render()};
-    $('#nfOpen').onclick=()=>{try{navigator.clipboard.writeText(title).then(()=>toast('제목 복사됨. 넷플릭스 검색창에 붙여넣으세요'))}catch{}};
+    $('#nfOpen').onclick=()=>{copyText(title).then(ok=>toast(ok?'제목 복사됨. 넷플릭스 검색창에 붙여넣으세요':'복사 실패. 위 제목을 길게 눌러 복사하세요'))};
+    $('#nfCopy').onclick=()=>copyText(title).then(ok=>toast(ok?'제목 복사됨':'복사 실패. 위 제목을 길게 눌러 복사하세요'));
     $('#bWant').onclick=()=>set('want');$('#bSeen').onclick=()=>set('seen');$('#bClose').onclick=close;
   }catch(e){$('#sheet').innerHTML=`<div class="msg">${e.message}</div>`}
+}
+async function copyText(t){
+  try{await navigator.clipboard.writeText(t);return true}catch{}
+  try{const a=document.createElement('textarea');a.value=t;a.style.cssText='position:fixed;top:0;opacity:0';document.body.appendChild(a);a.focus();a.select();a.setSelectionRange(0,999);const ok=document.execCommand('copy');a.remove();return ok}catch{return false}
 }
 function toast(m){let t=$('#toast');if(!t){t=document.createElement('div');t.id='toast';t.style.cssText='position:fixed;left:50%;bottom:30px;transform:translateX(-50%);background:#e50914;color:#fff;padding:10px 16px;border-radius:99px;z-index:20;font-size:14px';document.body.appendChild(t)}t.textContent=m;t.hidden=false;clearTimeout(t._t);t._t=setTimeout(()=>t.hidden=true,4000)}
 function close(){$('#modal').classList.remove('show')}
