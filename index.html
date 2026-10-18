@@ -192,6 +192,12 @@ function renderMine(){
 }
 function bindCards(){document.querySelectorAll('.card').forEach(c=>c.onclick=()=>openDetail(c.dataset.t,c.dataset.id))}
 
+function nfLink(title){
+  const q=encodeURIComponent(title), ua=navigator.userAgent;
+  if(/Android/i.test(ua))return `intent://www.netflix.com/search?q=${q}#Intent;scheme=https;package=com.netflix.mediaclient;S.browser_fallback_url=${encodeURIComponent('https://www.netflix.com/search?q='+q)};end`;
+  if(/iPhone|iPad|iPod/i.test(ua))return `nflx://www.netflix.com/search?q=${q}`;
+  return `https://www.netflix.com/search?q=${q}`;
+}
 async function openDetail(t,id){
   $('#sheet').innerHTML='<div class="msg">불러오는 중…</div>';$('#modal').classList.add('show');
   try{
@@ -205,7 +211,7 @@ async function openDetail(t,id){
     <div class="b"><h2>${title}</h2><div style="color:var(--sub);font-size:13px">${sub}${d.vote_average?` · ⭐ ${d.vote_average.toFixed(1)}`:''}</div>
     <p>${d.overview||'줄거리 정보가 없어요.'}</p>
     <div>${onNf?'✅ 한국 넷플릭스 시청 가능':'⚠️ 현재 한국 넷플릭스 목록에 없음'}</div>
-    <div style="margin-top:8px"><a class="btn" target="_blank" href="https://www.netflix.com/search?q=${encodeURIComponent(title)}">넷플릭스에서 열기</a>
+    <div style="margin-top:8px"><a class="btn" target="_blank" rel="noopener" href="${nfLink(title)}">넷플릭스 앱에서 열기</a>
     <button class="btn2" id="bWant">${m?.s==='want'?'⭐ 보고싶어요 ✔':'⭐ 보고싶어요'}</button>
     <button class="btn2" id="bSeen">${m?.s==='seen'?'✅ 봤어요 ✔':'✅ 봤어요'}</button>
     <button class="btn2" id="bClose">닫기</button></div></div>`;
