@@ -91,13 +91,20 @@ let key=store.get('key',''), type='movie', page=1, total=1, sel=new Set(), items
 let mine=store.get('mine',{}); // "movie:123": {s:'want'|'seen', t,p,y,r}
 
 function hdr(){return key.startsWith('eyJ')?{headers:{Authorization:'Bearer '+key}}:{}}
+const mem=new Map();
 async function tmdb(path,params={}){
   const u=new URL(API+path);
   Object.entries({language:'ko-KR',...params}).forEach(([k,v])=>v!==''&&v!=null&&u.searchParams.set(k,v));
+  const ck=u.toString(), ttl=path.includes('/watch/providers')?864e5:path.startsWith('/genre')?864e5*7:6e5;
+  const hit=mem.get(ck)||store.get('c:'+ck,null);
+  if(hit&&Date.now()-hit.t<ttl){mem.set(ck,hit);return hit.d}
   if(!key.startsWith('eyJ'))u.searchParams.set('api_key',key);
   const r=await fetch(u,hdr());
   if(!r.ok)throw new Error(r.status==401?'API 키가 올바르지 않습니다':'요청 실패 '+r.status);
-  return r.json();
+  const d=await r.json(), rec={t:Date.now(),d};
+  mem.set(ck,rec);
+  if(path.includes('/watch/providers')||path.startsWith('/genre'))store.set('c:'+ck,rec);
+  return d;
 }
 
 function showSetup(){
@@ -178,7 +185,7 @@ function cardHtml(r,t){
   return `<div class="card" data-id="${r.id}" data-t="${t}">
     ${r._unk?'<span class="badge" style="top:auto;bottom:46px;background:#a60">넷플릭스 확인 안 됨</span>':''}${r.vote_average?`<span class="badge">⭐ ${r.vote_average.toFixed(1)}</span>`:''}
     ${m?`<span class="mark">${m.s==='seen'?'✅':'⭐'}</span>`:''}
-    <img loading="lazy" src="${r.poster_path?IMG+'w342'+r.poster_path:''}" alt="">
+    <img loading="lazy" src="${r.poster_path?IMG+'w185'+r.poster_path:''}" alt="">
     <div class="t">${title}<div class="m">${date}</div></div></div>`;
 }
 function render(){
