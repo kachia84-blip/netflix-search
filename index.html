@@ -247,7 +247,7 @@ async function openDetail(t,id){
     $('#sheet').innerHTML=`${d.backdrop_path?`<img class="bd" src="${IMG}w780${d.backdrop_path}">`:''}
     <div class="b"><h2 id="ttl" style="user-select:all">${title}</h2><div style="color:var(--sub);font-size:13px">${sub}${d.vote_average?` · ⭐ ${d.vote_average.toFixed(1)}`:''}</div>
     <p>${d.overview||'줄거리 정보가 없어요.'}</p>
-    <div>${onNf?'✅ 한국 넷플릭스 시청 가능':'⚠️ 현재 한국 넷플릭스 목록에 없음'}</div>
+    <div id="nfStat">${onNf?'✅ 한국 넷플릭스 시청 가능 (TMDB 기준)':'⚠️ TMDB 기준으로 한국 넷플릭스 목록에 없음'}</div>
     <div style="margin-top:8px"><a class="btn" id="nfOpen" target="_blank" rel="noopener" href="${nfLink(title)}">넷플릭스 앱 열기 (제목 복사)</a>
     <a class="btn" style="background:#444" target="_blank" rel="noopener" href="https://www.netflix.com/search?q=${encodeURIComponent(title)}">웹에서 검색</a>
     <button class="btn2" id="nfCopy">제목 복사</button>
@@ -259,7 +259,9 @@ async function openDetail(t,id){
     $('#nfOpen').onclick=()=>{copyText(title).then(ok=>toast(ok?'제목 복사됨. 넷플릭스 검색창에 붙여넣으세요':'복사 실패. 위 제목을 길게 눌러 복사하세요'))};
     $('#nfCopy').onclick=()=>copyText(title).then(ok=>toast(ok?'제목 복사됨':'복사 실패. 위 제목을 길게 눌러 복사하세요'));
     nfTitleUrl(t,id).then(u=>{
-      if(!u||!$('#nfOpen'))return;
+      if(u===null||!$('#nfOpen'))return;
+      if(u===''){$('#nfStat').textContent=onNf?'⚠️ TMDB는 넷플릭스라고 하지만 Watchmode에서는 한국 넷플릭스에 없다고 나와요. 확인이 필요해요.':'⚠️ 한국 넷플릭스에 없는 것으로 확인돼요 (Watchmode)';return}
+      $('#nfStat').textContent='✅ 한국 넷플릭스 시청 가능 (Watchmode 확인)';
       $('#nfOpen').href=nfAppLink(u);$('#nfOpen').textContent='넷플릭스 앱에서 바로 열기';$('#nfOpen').onclick=null;
     });
     $('#bWant').onclick=()=>set('want');$('#bSeen').onclick=()=>set('seen');$('#bClose').onclick=close;
