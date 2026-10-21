@@ -58,7 +58,7 @@ label{font-size:13px;color:var(--sub)}
     <select id="sort">
       <option value="popularity.desc">인기순</option>
       <option value="vote_average.desc">평점순</option>
-      <option value="date.desc">최신순</option>
+      <option value="date.desc">최신순 (영화: 개봉일 / 드라마: 최근 방영)</option>
       <option value="vote_count.desc">평가 많은순</option>
     </select>
     <select id="rate">
@@ -141,9 +141,12 @@ function params(){
     'vote_average.gte':$('#rate').value,with_origin_country:$('#origin').value,
     with_genres:[...sel].join(',')};
   const s=$('#sort').value;
-  if(s==='date.desc')p.sort_by=type==='movie'?'primary_release_date.desc':'first_air_date.desc';
-  else p.sort_by=s;
-  if(s==='date.desc'){const today=new Date().toISOString().slice(0,10);p[type==='movie'?'primary_release_date.lte':'first_air_date.lte']=today;p['vote_count.gte']=5}
+  if(s==='date.desc'){
+    const iso=d=>d.toISOString().slice(0,10), today=new Date(), from=new Date(Date.now()-30*864e5);
+    p['vote_count.gte']=0;
+    if(type==='movie'){p.sort_by='primary_release_date.desc';p['primary_release_date.lte']=iso(today)}
+    else{p.sort_by='popularity.desc';p['air_date.gte']=iso(from);p['air_date.lte']=iso(today)} // 새 시즌·새 에피소드가 최근에 나온 시리즈
+  }else p.sort_by=s;
   return p;
 }
 
